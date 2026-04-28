@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Silent Trivia with Chris Hayes at City-State Brewing</title>
+<style>
+  /* ── Reset & Base ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: #fff;
+    color: #000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── Slide Container ──────────────────────────────────────── */
+  #stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ── Slide Card ───────────────────────────────────────────── */
+  .slide {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: min(90vw, 1100px);
+    min-height: min(70vh, 600px);
+    background: #fff;
+    border: 2px solid #000;
+    border-radius: 8px;
+    padding: 60px 80px;
+    gap: 24px;
+    transition: background 0.3s, color 0.3s;
+  }
+  .slide.active { display: flex; }
+
+  /* ── Question color states ────────────────────────────────── */
+  .slide.q-yellow { background: #fff176; color: #000; }
+  .slide.q-red    { background: #d32f2f; color: #fff; }
+  .slide.q-red .slide-subtitle { color: rgba(255,255,255,0.8); }
+
+  /* ── Typography ───────────────────────────────────────────── */
+  .slide-title {
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  .slide-subtitle {
+    font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+    color: #444;
+    margin-top: 8px;
+  }
+
+  .slide-body {
+    font-size: clamp(2rem, 4.5vw, 3.4rem);
+    line-height: 1.3;
+    max-width: 800px;
+    margin-top: 8px;
+  }
+
+  .question-number {
+    font-size: clamp(1.5rem, 2vw, 2rem);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ── Bullets ──────────────────────────────────────────────── */
+  .bullets {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    text-align: left;
+    margin-top: 8px;
+  }
+  .bullets li {
+    font-size: clamp(1.1rem, 2.2vw, 1.5rem);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .bullets li::before {
+    content: "▸";
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* ── Timing note ─────────────────────────────────────────── */
+  .timing-note {
+    font-size: clamp(1.1rem, 2vw, 1.5rem);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    border: 1px solid #000;
+    border-radius: 4px;
+    padding: 6px 18px;
+  }
+
+  /* ── Answer sheet diagram ─────────────────────────────────── */
+  .answer-diagram {
+    border: 2px solid #000;
+    width: 260px;
+    height: 140px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .diag-label {
+    position: absolute;
+    font-size: 0.75rem;
+    color: #555;
+  }
+  .diag-team { top: 8px; left: 10px; }
+  .diag-num  { bottom: 8px; right: 10px; }
+  .diag-answer { font-size: 1.3rem; font-weight: 600; }
+
+  /* ── Number question badge ───────────────────────────────── */
+  .num-badge {
+    font-size: clamp(0.75rem, 1.4vw, 0.95rem);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: #000;
+    color: #fff;
+    border-radius: 4px;
+    padding: 7px 20px;
+    line-height: 1.4;
+  }
+
+  /* ── Fun fact ─────────────────────────────────────────────── */
+  .fun-fact {
+    font-size: clamp(0.95rem, 1.8vw, 1.2rem);
+    color: #555;
+    font-style: italic;
+    border-top: 1px solid #000;
+    padding-top: 20px;
+    margin-top: 8px;
+    max-width: 700px;
+  }
+
+  /* ── Leaderboard ──────────────────────────────────────────── */
+  .leaderboard-table {
+    width: min(600px, 100%);
+    border-collapse: collapse;
+    margin-top: 8px;
+  }
+  .leaderboard-table thead th {
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #555;
+    padding: 0 16px 12px;
+    text-align: left;
+  }
+  .leaderboard-table thead th:last-child { text-align: right; }
+  .leaderboard-table tbody tr {
+    border-top: 1px solid #000;
+  }
+  .leaderboard-table tbody td {
+    padding: 14px 16px;
+    font-size: clamp(1rem, 2vw, 1.4rem);
+  }
+  .leaderboard-table tbody td:last-child { text-align: right; font-weight: 700; }
+
+  .rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 0.9rem;
+    border: 2px solid #000;
+  }
+
+  .no-scores {
+    color: #555;
+    font-style: italic;
+    font-size: 1.1rem;
+    margin-top: 16px;
+  }
+
+  /* ── Host HUD ─────────────────────────────────────────────── */
+  #hud {
+    position: fixed;
+    bottom: 28px;
+    left: 0; right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    pointer-events: none;
+    z-index: 20;
+  }
+
+  .hud-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #555;
+    background: #fff;
+    border: 1px solid #000;
+    border-radius: 6px;
+    padding: 4px 10px;
+  }
+
+  /* ── Hold-Space Ring ──────────────────────────────────────── */
+  #hold-ring-wrap {
+    position: relative;
+    width: 56px; height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #hold-ring-svg {
+    position: absolute;
+    top: 0; left: 0;
+    transform: rotate(-90deg);
+  }
+  #hold-ring-circle {
+    fill: none;
+    stroke: #000;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 138.2;
+    stroke-dashoffset: 138.2;
+    transition: stroke-dashoffset 0.05s linear;
+  }
+  #hold-ring-track {
+    fill: none;
+    stroke: #ccc;
+    stroke-width: 3;
+  }
+  #hold-icon {
+    font-size: 1.4rem;
+    line-height: 1;
+    color: #aaa;
+    transition: color 0.2s;
+    position: relative;
+    z-index: 1;
+  }
+  #hold-ring-wrap.active #hold-icon { color: #000; }
+
+  /* ── Score Editor Modal ───────────────────────────────────── */
+  #score-modal-backdrop {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    align-items: flex-start;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 20px;
+  }
+  #score-modal-backdrop.open { display: flex; }
+
+  #score-modal {
+    background: #fff;
+    border: 2px solid #000;
+    border-radius: 8px;
+    padding: 36px 40px;
+    width: min(560px, 90vw);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    user-select: text;
+    margin: auto;
+  }
+
+  #score-modal h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+
+  #score-modal p {
+    font-size: 0.85rem;
+    color: #555;
+    line-height: 1.5;
+  }
+
+  #score-paste {
+    width: 100%;
+    height: 160px;
+    background: #f9f9f9;
+    border: 1px solid #000;
+    border-radius: 4px;
+    color: #000;
+    font-family: monospace;
+    font-size: 0.9rem;
+    padding: 12px;
+    resize: vertical;
+    outline: none;
+  }
+  #score-paste:focus { outline: 2px solid #000; }
+
+  #score-preview {
+    font-size: 0.85rem;
+    color: #555;
+    min-height: 24px;
+  }
+  #score-preview table { width: 100%; border-collapse: collapse; }
+  #score-preview td { padding: 4px 8px; }
+  #score-preview td:last-child { text-align: right; font-weight: 600; color: #000; }
+  #score-preview tr:not(:last-child) td { border-bottom: 1px solid #ccc; }
+
+  .modal-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+  }
+
+  button.btn {
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: 2px solid #000;
+    border-radius: 4px;
+    padding: 10px 22px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    background: #fff;
+    color: #000;
+  }
+  button.btn:hover { opacity: 0.7; }
+  button.btn.primary { background: #000; color: #fff; }
+</style>
+</head>
+<body>
+
+<!-- Questions are loaded from questions.csv at runtime.
+     Format: round,number,category,question,answer,fact
+     Serve this file over HTTP (e.g. python -m http.server) so fetch() works. -->
+
+<div id="stage"></div>
+
+<!-- Host HUD -->
+<div id="hud">
+  <div id="hold-ring-wrap">
+    <svg id="hold-ring-svg" width="56" height="56" viewBox="0 0 56 56">
+      <circle id="hold-ring-track" cx="28" cy="28" r="22"/>
+      <circle id="hold-ring-circle" cx="28" cy="28" r="22"/>
+    </svg>
+    <span id="hold-icon">⏎</span>
+  </div>
+  <span class="hud-tag" id="hud-counter">1 / 1</span>
+</div>
+
+<!-- Score Editor Modal -->
+<div id="score-modal-backdrop">
+  <div id="score-modal" role="dialog" aria-modal="true" aria-label="Score Editor">
+    <div class="modal-buttons">
+      <button class="btn secondary" id="score-cancel">Cancel</button>
+      <button class="btn primary"   id="score-save">Save Scores</button>
+    </div>
+    <h2>Update Scores</h2>
+    <p>
+      In your spreadsheet, select the <strong>Team Name</strong> and <strong>Score</strong> columns,
+      copy, then paste below. Each row should be: <code>Team Name [Tab] Score</code>
+    </p>
+    <textarea id="score-paste" placeholder="Team Alpha&#9;120&#10;Team Beta&#9;95&#10;Team Gamma&#9;88&#10;..."></textarea>
+    <div id="score-preview"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  // ── State ──────────────────────────────────────────────────
+  let currentIndex = 0;
+  let scores = [];
+  let qState = -1;
+  const Q_STATES = ['', 'q-yellow', 'q-red'];
+  let SLIDES = [];
+
+  // ── DOM refs ───────────────────────────────────────────────
+  const stage      = document.getElementById('stage');
+  const hudCounter = document.getElementById('hud-counter');
+  const ring       = document.getElementById('hold-ring-circle');
+  const ringWrap   = document.getElementById('hold-ring-wrap');
+  const CIRCUMFERENCE = 138.2; // 2π × 22
+
+  // ── Structural slides (welcome + rules — not from CSV) ─────
+  const FIXED_SLIDES_START = [
+    {
+      type: "welcome",
+      titleHtml: `<span style="font-size:1.2em">Silent Trivia</span><br><span style="font-size:0.65em;font-weight:700">with Chris Hayes at City-State Brewing</span>`,
+      subtitle: "Come pick up a pad of paper with instructions, find your seats, come up with a team name, and get ready!"
+    },
+    {
+      type: "instructions",
+      title: "Instructions",
+      preBullets: [
+        "Come pick up a pad of paper!",
+      ],
+      noteHtml: "WHITE ≈ 2 min &nbsp;·&nbsp; <span style=\"background:#ffd700;padding:2px 10px;border-radius:3px\">YELLOW</span> ≈ 30 sec warning &nbsp;·&nbsp; <span style=\"background:#d32f2f;color:#fff;padding:2px 10px;border-radius:3px\">RED</span> = time's up",
+      bullets: [
+        "For each question, write down your answer, tear the page off, walk up and turn it in.",
+        "Number Questions: Closest guesses earn points",
+      ],
+      diagram: true,
+      footer: "22 Questions Total, with Half Time",
+    },
+    {
+      type: "instructions",
+      title: "Rules",
+      bullets: [
+        "The maximum team size is 5. Prizes will only be given out to teams of up to 5 individuals.",
+        "While discussing a question, do NOT use your phone. You may use your phone once your answer is handed in.",
+        "Questions will only be shown once. If you miss a question, too bad!",
+        "Last names are enough when the answer is a real person, unless the question says otherwise.",
+        "Write clearly for the host. Illegible answers will not be counted.",
+        "Minor spelling mistakes are fine.",
+        "Accusations of cheating require a player to report it and multiple witnesses.",
+        "The host makes the final decision in all matters or issues.",
+      ]
+    },
+    {
+      type: "welcome",
+      title: "Ready to Start?",
+    },
+  ];
+
+  // ── CSV parsing ────────────────────────────────────────────
+  function parseCSV(text) {
+    const rows = [];
+    let i = text.charCodeAt(0) === 0xFEFF ? 1 : 0; // strip BOM
+    while (i < text.length) {
+      const row = [];
+      while (i < text.length) {
+        if (text[i] === '"') {
+          i++;
+          let field = '';
+          while (i < text.length) {
+            if (text[i] === '"' && text[i + 1] === '"') { field += '"'; i += 2; }
+            else if (text[i] === '"') { i++; break; }
+            else field += text[i++];
+          }
+          row.push(field);
+        } else {
+          let field = '';
+          while (i < text.length && text[i] !== ',' && text[i] !== '\n' && text[i] !== '\r')
+            field += text[i++];
+          row.push(field.trim());
+        }
+        if (i < text.length && text[i] === ',') i++;
+        else break;
+      }
+      if (i < text.length && text[i] === '\r') i++;
+      if (i < text.length && text[i] === '\n') i++;
+      if (row.length > 0 && !(row.length === 1 && row[0] === '')) rows.push(row);
+    }
+    return rows;
+  }
+
+  function buildSlidesFromCSV(csvText) {
+    const rows = parseCSV(csvText);
+    if (rows.length < 2) return [];
+    const headers = rows[0].map(h => h.toLowerCase().trim());
+    const col = name => headers.indexOf(name);
+    const LEADERBOARD_AFTER = new Set([5, 10, 15, 20]);
+    const slides = [...FIXED_SLIDES_START];
+    let qCount = 0;
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r];
+      const get = name => (row[col(name)] || '').trim();
+      const round    = parseInt(get('round'))  || null;
+      const number   = parseInt(get('number')) || null;
+      const category = get('category');
+      const question = get('question');
+      const answer   = get('answer');
+      const fact      = get('fact');
+      const extraclue = get('extraclue');
+      const num       = get('num').toLowerCase() === 'yes';
+      if (!question || !answer) continue;
+      qCount++;
+      slides.push({ type: 'question', round, number, category, text: question, ...(extraclue ? { extraclue } : {}), ...(num ? { num: true } : {}) });
+      slides.push({ type: 'answer',   round, number, answer, ...(fact ? { fact } : {}) });
+      if (LEADERBOARD_AFTER.has(qCount)) {
+        slides.push({ type: 'leaderboard', title: `Standings after Q${qCount}` });
+        if (qCount === 10) {
+          slides.push({ type: 'break', title: 'Halftime Break', subtitle: '5 minutes' });
+          slides.push({ type: 'break', title: 'Halftime Break', subtitle: '1 minute left', yellow: true });
+        }
+        if (qCount === 20)
+          slides.push({ type: 'break', title: 'Two questions left — extra hard number questions!' });
+      }
+    }
+    slides.push({ type: 'leaderboard', title: 'Final Standings' });
+    return slides;
+  }
+
+  // ── Build slides ───────────────────────────────────────────
+  function assignAbsNumbers() {
+    let qNum = 0;
+    SLIDES.forEach(s => {
+      if (s.type === 'question' || s.type === 'answer') {
+        if (s.type === 'question') qNum++;
+        s.absNumber = qNum;
+      }
+    });
+  }
+
+  function buildSlides() {
+    stage.innerHTML = '';
+    SLIDES.forEach((s, i) => {
+      const el = document.createElement('div');
+      el.className = 'slide';
+      el.dataset.index = i;
+      el.innerHTML = renderSlide(s);
+      stage.appendChild(el);
+    });
+  }
+
+  function renderSlide(s) {
+    switch (s.type) {
+      case 'welcome':
+        return `
+          <div class="slide-title" style="line-height:1.3">${s.titleHtml || esc(s.title)}</div>
+          ${s.subtitle ? `<div class="slide-subtitle">${esc(s.subtitle)}</div>` : ''}
+        `;
+      case 'instructions':
+        return `
+          <div class="slide-title">${esc(s.title)}</div>
+          ${(s.preBullets || []).length ? `<ul class="bullets">${s.preBullets.map(b => `<li>${typeof b === 'object' ? b.html : esc(b)}</li>`).join('')}</ul>` : ''}
+          ${s.noteHtml ? `<div class="timing-note">${s.noteHtml}</div>` : s.note ? `<div class="timing-note">${esc(s.note)}</div>` : ''}
+          <ul class="bullets">
+            ${(s.bullets || []).map(b =>
+              `<li>${typeof b === 'object' ? b.html : esc(b)}</li>`
+            ).join('')}
+          </ul>
+          ${s.diagram ? `
+            <div class="answer-diagram">
+              <span class="diag-label diag-team">Team Name</span>
+              <span class="diag-answer">Answer</span>
+              <span class="diag-label diag-num">Question #</span>
+            </div>
+          ` : ''}
+          ${s.footer ? `<div class="slide-subtitle">${esc(s.footer)}</div>` : ''}
+        `;
+      case 'question':
+        return `
+          <div class="question-number">Q${s.absNumber}</div>
+          ${s.num ? `<div class="num-badge">Number Question &nbsp;·&nbsp; Closest: 3 pts &nbsp;·&nbsp; 2nd: 2 pts &nbsp;·&nbsp; 3rd: 1 pt</div>` : ''}
+          <div class="slide-body">${esc(s.text)}</div>
+          ${s.extraclue ? `<div class="slide-subtitle">${esc(s.extraclue)}</div>` : ''}
+        `;
+      case 'answer':
+        return `
+          <div class="question-number">A${s.absNumber}</div>
+          <div class="slide-title">${esc(s.answer)}</div>
+        `;
+      case 'leaderboard':
+        return `
+          <div class="slide-title">${esc(s.title || 'Standings')}</div>
+          <div class="leaderboard-body" id="lb-${SLIDES.indexOf(s)}"></div>
+        `;
+      case 'break':
+        return `
+          <div class="slide-title">${esc(s.title || 'Break Time')}</div>
+          ${s.subtitle ? `<div class="slide-subtitle">${esc(s.subtitle)}</div>` : ''}
+        `;
+      default:
+        return `<div class="slide-body">${esc(JSON.stringify(s))}</div>`;
+    }
+  }
+
+  function renderLeaderboard(slideIndex) {
+    const el = document.getElementById(`lb-${slideIndex}`);
+    if (!el) return;
+    if (scores.length === 0) {
+      el.innerHTML = `<div class="no-scores">No scores loaded yet — press Ctrl+Shift+S to update scores.</div>`;
+      return;
+    }
+    const sorted = [...scores].sort((a, b) => b.score - a.score).slice(0, 5);
+    el.innerHTML = `
+      <table class="leaderboard-table">
+        <thead>
+          <tr><th>#</th><th>Team</th><th>Score</th></tr>
+        </thead>
+        <tbody>
+          ${sorted.map((t, i) => `
+            <tr>
+              <td><span class="rank-badge">${i + 1}</span></td>
+              <td>${esc(t.team)}</td>
+              <td>${t.score}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  // ── Navigation ─────────────────────────────────────────────
+  function goTo(index) {
+    const slides = stage.querySelectorAll('.slide');
+    slides.forEach(s => {
+      s.classList.remove('active', 'q-yellow', 'q-red');
+    });
+    currentIndex = Math.max(0, Math.min(index, SLIDES.length - 1));
+    const activeEl = slides[currentIndex];
+    activeEl.classList.add('active');
+
+    const s = SLIDES[currentIndex];
+    if (s.yellow) activeEl.classList.add('q-yellow');
+    if (s.type === 'question') {
+      qState = 0; // start at white
+    } else {
+      qState = -1;
+    }
+
+    updateHUD();
+    if (s.type === 'leaderboard') renderLeaderboard(currentIndex);
+  }
+
+  // Advance within a question's color states, or move to next slide
+  function advance() {
+    if (SLIDES[currentIndex].type === 'question' && qState < 2) {
+      qState++;
+      const activeEl = stage.querySelectorAll('.slide')[currentIndex];
+      activeEl.classList.remove('q-yellow', 'q-red');
+      if (Q_STATES[qState]) activeEl.classList.add(Q_STATES[qState]);
+      updateHUD();
+      return;
+    }
+    if (currentIndex >= SLIDES.length - 1) return;
+    goTo(currentIndex + 1);
+  }
+
+  function updateHUD() {
+    const s = SLIDES[currentIndex];
+    const stateLabel = s.type === 'question'
+      ? ['WHITE', 'YELLOW', 'RED'][qState] ?? ''
+      : '';
+    const typeLabels = {
+      welcome:      'WELCOME',
+      instructions: 'INSTRUCTIONS',
+      question:     `Q${s.absNumber} · ${stateLabel}`,
+      answer:       `A${s.absNumber}`,
+      leaderboard:  'LEADERBOARD',
+      break:        'BREAK',
+    };
+    hudCounter.textContent = `${currentIndex + 1} / ${SLIDES.length}`;
+  }
+
+  // ── Hold-Space ring ────────────────────────────────────────
+  const HOLD_MS = 1200;
+  let holdStart = null;
+  let holdRAF   = null;
+  let spaceDown = false;
+
+  function setRingProgress(p) {
+    ring.style.strokeDashoffset = CIRCUMFERENCE * (1 - p);
+  }
+
+  function tickHold() {
+    if (!spaceDown || holdStart === null) return;
+    const elapsed = Date.now() - holdStart;
+    const p = Math.min(elapsed / HOLD_MS, 1);
+    setRingProgress(p);
+    if (p >= 1) {
+      cancelRing();
+      advance();
+    } else {
+      holdRAF = requestAnimationFrame(tickHold);
+    }
+  }
+
+  function startHold() {
+    if (spaceDown) return;
+    spaceDown = true;
+    holdStart = Date.now();
+    ringWrap.classList.add('active');
+    holdRAF = requestAnimationFrame(tickHold);
+  }
+
+  function cancelRing() {
+    spaceDown = false;
+    holdStart = null;
+    cancelAnimationFrame(holdRAF);
+    setRingProgress(0);
+    ringWrap.classList.remove('active');
+  }
+
+  document.addEventListener('keydown', e => {
+    if (scoreModalOpen()) return;
+    if (e.code === 'Space' && !e.repeat) {
+      e.preventDefault();
+      startHold();
+    }
+    if (e.code === 'ArrowLeft' && !e.repeat) {
+      e.preventDefault();
+      cancelRing();
+      goTo(currentIndex - 1);
+    }
+  });
+  document.addEventListener('keyup', e => {
+    if (e.code === 'Space') cancelRing();
+  });
+
+  // ── Score Modal ────────────────────────────────────────────
+  const backdrop  = document.getElementById('score-modal-backdrop');
+  const pasteArea = document.getElementById('score-paste');
+  const preview   = document.getElementById('score-preview');
+  const saveBtn   = document.getElementById('score-save');
+  const cancelBtn = document.getElementById('score-cancel');
+  let pendingScores = [];
+
+  function scoreModalOpen() { return backdrop.classList.contains('open'); }
+
+  function openScoreModal() {
+    pasteArea.value = scores.map(s => `${s.team}\t${s.score}`).join('\n');
+    pendingScores = [...scores];
+    renderPreview(pendingScores);
+    backdrop.classList.add('open');
+    setTimeout(() => pasteArea.focus(), 50);
+  }
+
+  function closeScoreModal() {
+    backdrop.classList.remove('open');
+    pasteArea.value = '';
+    preview.innerHTML = '';
+    pendingScores = [];
+  }
+
+  function parseScores(text) {
+    return text.split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length > 0)
+      .map(l => {
+        const parts = l.split('\t');
+        const team  = (parts[0] || '').trim();
+        const score = parseFloat((parts[1] || '').trim().replace(/,/g, ''));
+        return { team, score };
+      })
+      .filter(s => s.team && !isNaN(s.score));
+  }
+
+  function renderPreview(parsed) {
+    if (parsed.length === 0) {
+      preview.innerHTML = '<em>No valid rows parsed yet.</em>';
+      return;
+    }
+    preview.innerHTML = `
+      <table>
+        ${parsed.map(s => `<tr><td>${esc(s.team)}</td><td>${s.score}</td></tr>`).join('')}
+      </table>
+    `;
+  }
+
+  pasteArea.addEventListener('input', () => {
+    pendingScores = parseScores(pasteArea.value);
+    renderPreview(pendingScores);
+  });
+
+  pasteArea.addEventListener('paste', () => {
+    setTimeout(() => {
+      pendingScores = parseScores(pasteArea.value);
+      renderPreview(pendingScores);
+    }, 0);
+  });
+
+  saveBtn.addEventListener('click', () => {
+    scores = pendingScores;
+    closeScoreModal();
+    if (SLIDES[currentIndex].type === 'leaderboard') renderLeaderboard(currentIndex);
+  });
+
+  cancelBtn.addEventListener('click', closeScoreModal);
+
+  document.addEventListener('keydown', e => {
+    if (scoreModalOpen()) {
+      if (e.key === 'Escape') closeScoreModal();
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        scores = pendingScores;
+        closeScoreModal();
+        if (SLIDES[currentIndex].type === 'leaderboard') renderLeaderboard(currentIndex);
+      }
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
+      e.preventDefault();
+      openScoreModal();
+    }
+  });
+
+  // ── Utility ────────────────────────────────────────────────
+  function esc(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ── Init ───────────────────────────────────────────────────
+  async function init() {
+    try {
+      const res = await fetch('questions.csv');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      SLIDES = buildSlidesFromCSV(await res.text());
+    } catch (e) {
+      SLIDES = [{
+        type: 'welcome',
+        title: 'Could not load questions.csv',
+        subtitle: `Serve via HTTP (e.g. python -m http.server) and place questions.csv alongside index.html. (${e.message})`
+      }];
+    }
+    assignAbsNumbers();
+    buildSlides();
+    goTo(0);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
